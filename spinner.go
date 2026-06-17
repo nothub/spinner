@@ -99,3 +99,10 @@ func cleanLabel(s string) string {
 		return r
 	}, s)
 }
+
+// Spin starts a spinner with a label, runs f, then stops the spinner.
+func Spin(label string, f func()) {
+	sp := Start(label)
+	defer sp.Stop()
+	f()
+}

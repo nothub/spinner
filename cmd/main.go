@@ -7,9 +7,9 @@ import (
 )
 
 func main() {
-	sp := spinner.Start("Spinning...")
-	defer sp.Stop()
-	work()
+	spinner.Spin("Spinning...", func() {
+		work()
+	})
 }
 
 func work() {
