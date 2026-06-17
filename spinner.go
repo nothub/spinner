@@ -29,6 +29,7 @@ type Spinner struct {
 	done    chan struct{}
 	stopped chan struct{}
 	once    sync.Once
+	delay   time.Duration
 }
 
 // Start prints label and animates in place on stderr when stderr is a TTY.
@@ -40,6 +41,7 @@ func Start(label string) *Spinner {
 	s := &Spinner{
 		done:    make(chan struct{}),
 		stopped: make(chan struct{}),
+		delay:   250 * time.Millisecond,
 	}
 
 	if !term.IsTerminal(int(os.Stderr.Fd())) {
@@ -51,7 +53,7 @@ func Start(label string) *Spinner {
 	go func() {
 		defer close(s.stopped)
 
-		t := time.NewTicker(250 * time.Millisecond)
+		t := time.NewTicker(s.delay)
 		defer t.Stop()
 
 		i := 0
