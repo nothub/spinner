@@ -1,10 +1,6 @@
 // Package spinner spins a small progress spinner on stderr while a long-running operation is spinning.
 //
-//	sp := spinner.Start("spinning")
-//	work()
-//	sp.Stop()
-//
-//	sp := spinner.Start("spinning")
+//	sp := spinner.Start("Spinning...")
 //	defer sp.Stop()
 //	work()
 package spinner
