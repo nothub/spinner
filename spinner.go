@@ -1,3 +1,9 @@
+// Package spinner animates a small progress indicator on stderr while a
+// long-running operation is in flight.
+//
+//	sp := spinner.Start("Deploying")
+//	defer sp.Stop()
+//	// ... do work ...
 package spinner
 
 import (
