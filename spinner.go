@@ -1,9 +1,12 @@
-// Package spinner animates a small progress indicator on stderr while a
-// long-running operation is in flight.
+// Package spinner spins a small progress spinner on stderr while a long-running operation is spinning.
 //
-//	sp := spinner.Start("Deploying")
+//	sp := spinner.Start("spinning")
+//	work()
+//	sp.Stop()
+//
+//	sp := spinner.Start("spinning")
 //	defer sp.Stop()
-//	// ... do work ...
+//	work()
 package spinner
 
 import (
@@ -17,19 +20,13 @@ import (
 	"golang.org/x/term"
 )
 
-var elements = []string{
-	"૮(｡◕‿◕｡)っ",
-	"૮(｡◕‿◕｡)つ",
-	"⊂(｡◕‿◕｡)っ",
-	"⊂(｡◕‿◕｡)つ",
-}
-
 // Spinner animates a progress indicator on stderr.
 type Spinner struct {
 	done    chan struct{}
 	stopped chan struct{}
 	once    sync.Once
 	delay   time.Duration
+	frames  []string
 }
 
 // Start prints label and animates in place on stderr when stderr is a TTY.
@@ -42,6 +39,12 @@ func Start(label string) *Spinner {
 		done:    make(chan struct{}),
 		stopped: make(chan struct{}),
 		delay:   250 * time.Millisecond,
+		frames: []string{
+			"૮(｡◕‿◕｡)っ",
+			"૮(｡◕‿◕｡)つ",
+			"⊂(｡◕‿◕｡)っ",
+			"⊂(｡◕‿◕｡)つ",
+		},
 	}
 
 	if !term.IsTerminal(int(os.Stderr.Fd())) {
@@ -58,7 +61,7 @@ func Start(label string) *Spinner {
 
 		i := 0
 		printFrame := func() {
-			fmt.Fprintf(os.Stderr, "\r\033[2K%s %s", elements[i%len(elements)], label)
+			fmt.Fprintf(os.Stderr, "\r\033[2K%s %s", s.frames[i%len(s.frames)], label)
 			i++
 		}
 
