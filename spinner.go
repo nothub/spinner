@@ -16,31 +16,55 @@ import (
 	"golang.org/x/term"
 )
 
+// Option configures a Spinner.
+type Option func(*Spinner)
+
+// WithStartDelay sets how long to wait before the spinner appears.
+func WithStartDelay(d time.Duration) Option {
+	return func(s *Spinner) { s.startDelay = d }
+}
+
+// WithDelay sets the animation frame interval.
+func WithDelay(d time.Duration) Option {
+	return func(s *Spinner) { s.delay = d }
+}
+
+// WithFrames sets the animation frames.
+func WithFrames(frames []string) Option {
+	return func(s *Spinner) { s.frames = frames }
+}
+
 // Spinner animates a progress indicator on stderr.
 type Spinner struct {
-	done    chan struct{}
-	stopped chan struct{}
-	once    sync.Once
-	delay   time.Duration
-	frames  []string
+	done       chan struct{}
+	stopped    chan struct{}
+	once       sync.Once
+	startDelay time.Duration
+	delay      time.Duration
+	frames     []string
 }
 
 // Start prints label and animates in place on stderr when stderr is a TTY.
 // On non-TTY output, such as pipes or log files, it prints the label as a line.
 // Call Stop when the operation finishes.
-func Start(label string) *Spinner {
+func Start(label string, opts ...Option) *Spinner {
 	label = cleanLabel(label)
 
 	s := &Spinner{
-		done:    make(chan struct{}),
-		stopped: make(chan struct{}),
-		delay:   250 * time.Millisecond,
+		done:       make(chan struct{}),
+		stopped:    make(chan struct{}),
+		startDelay: 3 * time.Second,
+		delay:      250 * time.Millisecond,
 		frames: []string{
 			"૮(｡◕‿◕｡)っ",
 			"૮(｡◕‿◕｡)つ",
 			"⊂(｡◕‿◕｡)っ",
 			"⊂(｡◕‿◕｡)つ",
 		},
+	}
+
+	for _, o := range opts {
+		o(s)
 	}
 
 	if !term.IsTerminal(int(os.Stderr.Fd())) {
@@ -51,6 +75,15 @@ func Start(label string) *Spinner {
 
 	go func() {
 		defer close(s.stopped)
+
+		fmt.Fprintf(os.Stderr, "\r\033[2K%s", label)
+
+		select {
+		case <-s.done:
+			fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", label)
+			return
+		case <-time.After(s.startDelay):
+		}
 
 		t := time.NewTicker(s.delay)
 		defer t.Stop()
@@ -101,8 +134,8 @@ func cleanLabel(s string) string {
 }
 
 // Spin starts a spinner with a label, runs f, then stops the spinner.
-func Spin(label string, f func()) {
-	sp := Start(label)
+func Spin(label string, f func(), opts ...Option) {
+	sp := Start(label, opts...)
 	defer sp.Stop()
 	f()
 }
