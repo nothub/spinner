@@ -1,4 +1,4 @@
-module codeberg.org/fhuebner/spinner
+module github.com/nothub/spinner
 
 go 1.26.4
 

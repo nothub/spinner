@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	"codeberg.org/fhuebner/spinner"
+	"github.com/nothub/spinner"
 )
 
 func main() {
