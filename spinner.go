@@ -34,6 +34,14 @@ func WithFrames(frames []string) Option {
 	return func(s *Spinner) { s.frames = frames }
 }
 
+// WithLabelFunc sets a function called on every animation tick to regenerate the label.
+// The label passed to Start is still used for non-TTY output and the frame shown during startDelay.
+// f is called from the spinner's background goroutine, so it must be safe for concurrent use
+// alongside any state it reads that the caller also mutates.
+func WithLabelFunc(f func() string) Option {
+	return func(s *Spinner) { s.labelFunc = f }
+}
+
 // Spinner animates a progress indicator on stderr.
 type Spinner struct {
 	done       chan struct{}
@@ -42,6 +50,7 @@ type Spinner struct {
 	startDelay time.Duration
 	delay      time.Duration
 	frames     []string
+	labelFunc  func() string
 }
 
 // Start prints label and animates in place on stderr when stderr is a TTY.
@@ -76,11 +85,12 @@ func Start(label string, opts ...Option) *Spinner {
 	go func() {
 		defer close(s.stopped)
 
-		fmt.Fprintf(os.Stderr, "\r\033[2K%s", label)
+		current := label
+		fmt.Fprintf(os.Stderr, "\r\033[2K%s", current)
 
 		select {
 		case <-s.done:
-			fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", label)
+			fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", current)
 			return
 		case <-time.After(s.startDelay):
 		}
@@ -90,7 +100,10 @@ func Start(label string, opts ...Option) *Spinner {
 
 		i := 0
 		printFrame := func() {
-			fmt.Fprintf(os.Stderr, "\r\033[2K%s %s", s.frames[i%len(s.frames)], label)
+			if s.labelFunc != nil {
+				current = cleanLabel(s.labelFunc())
+			}
+			fmt.Fprintf(os.Stderr, "\r\033[2K%s %s", s.frames[i%len(s.frames)], current)
 			i++
 		}
 
@@ -99,7 +112,7 @@ func Start(label string, opts ...Option) *Spinner {
 		for {
 			select {
 			case <-s.done:
-				fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", label)
+				fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", current)
 				return
 			case <-t.C:
 				printFrame()
