@@ -26,12 +26,20 @@ func WithStartDelay(d time.Duration) Option {
 
 // WithDelay sets the animation frame interval.
 func WithDelay(d time.Duration) Option {
-	return func(s *Spinner) { s.delay = d }
+	return func(s *Spinner) {
+		if d > 0 {
+			s.delay = d
+		}
+	}
 }
 
 // WithFrames sets the animation frames.
 func WithFrames(frames []string) Option {
-	return func(s *Spinner) { s.frames = frames }
+	return func(s *Spinner) {
+		if len(frames) > 0 {
+			s.frames = frames
+		}
+	}
 }
 
 // WithLabelFunc sets a function called on every animation tick to regenerate the label.
