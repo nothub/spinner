@@ -60,6 +60,7 @@ type Spinner struct {
 	delay      time.Duration
 	frames     []string
 	labelFunc  func() string
+	maxWidth   int
 }
 
 // Start prints label and animates in place on stderr when stderr is a TTY.
@@ -74,6 +75,7 @@ func Start(label string, opts ...Option) *Spinner {
 		stopped:    make(chan struct{}),
 		startDelay: 3 * time.Second,
 		delay:      250 * time.Millisecond,
+		maxWidth:   80,
 		frames: []string{
 			"૮(｡◕‿◕｡)っ",
 			"૮(｡◕‿◕｡)つ",
@@ -96,11 +98,11 @@ func Start(label string, opts ...Option) *Spinner {
 		defer close(s.stopped)
 
 		current := label
-		fmt.Fprintf(os.Stderr, "\r\033[2K%s", truncate(current))
+		fmt.Fprintf(os.Stderr, "\r\033[2K%s", s.truncate(current))
 
 		select {
 		case <-s.done:
-			fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", truncate(current))
+			fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", s.truncate(current))
 			return
 		case <-time.After(s.startDelay):
 		}
@@ -113,7 +115,7 @@ func Start(label string, opts ...Option) *Spinner {
 			if s.labelFunc != nil {
 				current = cleanLabel(s.labelFunc())
 			}
-			fmt.Fprintf(os.Stderr, "\r\033[2K%s", truncate(s.frames[i%len(s.frames)]+" "+current))
+			fmt.Fprintf(os.Stderr, "\r\033[2K%s", s.truncate(s.frames[i%len(s.frames)]+" "+current))
 			i++
 		}
 
@@ -122,7 +124,7 @@ func Start(label string, opts ...Option) *Spinner {
 		for {
 			select {
 			case <-s.done:
-				fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", truncate(current))
+				fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", s.truncate(current))
 				return
 			case <-t.C:
 				printFrame()
@@ -143,18 +145,14 @@ func (s *Spinner) Stop() {
 	<-s.stopped
 }
 
-// maxWidth caps the rendered spinner line in terminal cells. The erase sequence
-// clears only the row the cursor is on, so a line that wraps leaves residue behind.
-const maxWidth = 80
-
-// truncate cuts s to at most maxWidth cells. runewidth measures whole grapheme
-// clusters, so a cut never splits a combining sequence.
+// truncate cuts line to at most s.maxWidth cells. runewidth measures whole
+// grapheme clusters, so a cut never splits a combining sequence.
 //
 // Ambiguous-width runes follow the locale runewidth detects at init, but its
 // ambiguous table is a subset of UAX #11: U+25D5 in the default frames counts as
 // one cell either way, so a CJK terminal rendering it wide can still wrap.
-func truncate(s string) string {
-	return runewidth.Truncate(s, maxWidth, "")
+func (s *Spinner) truncate(line string) string {
+	return runewidth.Truncate(line, s.maxWidth, "")
 }
 
 func cleanLabel(s string) string {

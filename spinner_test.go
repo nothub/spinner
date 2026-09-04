@@ -30,10 +30,32 @@ func TestWithFramesIgnoresEmpty(t *testing.T) {
 	}
 }
 
+// Guards the default wired up in Start, not just the field.
+func TestStartDefaultsToEightyColumns(t *testing.T) {
+	sp := Start("")
+	defer sp.Stop()
+
+	if sp.maxWidth != 80 {
+		t.Errorf("Start() left maxWidth at %d, want 80", sp.maxWidth)
+	}
+}
+
+// The cap has to reach truncate, not merely be stored on the struct.
+func TestTruncateUsesMaxWidth(t *testing.T) {
+	s := &Spinner{maxWidth: 10}
+
+	if got, want := s.truncate(strings.Repeat("a", 20)), strings.Repeat("a", 10); got != want {
+		t.Errorf("truncate() = %q, want %q", got, want)
+	}
+}
+
 // Cases stick to runes whose width is locale-independent. Ambiguous-width runes
 // such as U+2282 are deliberately absent: runewidth widens those under a CJK
 // locale, so an expectation built on one would depend on the environment.
 func TestTruncate(t *testing.T) {
+	s := &Spinner{maxWidth: 80}
+	maxWidth := s.maxWidth
+
 	tests := []struct {
 		name string
 		in   string
@@ -49,7 +71,7 @@ func TestTruncate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := truncate(tt.in)
+			got := s.truncate(tt.in)
 			if got != tt.want {
 				t.Errorf("truncate() = %q, want %q", got, tt.want)
 			}
