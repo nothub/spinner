@@ -1,6 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "baseBranchPatterns": [ "main" ],
   "semanticCommits": "enabled",
-  "minimumReleaseAge": "7 days",
+  "minimumReleaseAge": "3 days",
+  "timezone": "Europe/Berlin",
   "configMigration": true
 }
