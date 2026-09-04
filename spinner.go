@@ -1,4 +1,4 @@
-// Package spinner spins a small progress spinner on stderr while a long-running operation is spinning.
+// Package spinner spins a small progress spinner on stderr while a long-running operation is running.
 //
 //	sp := spinner.Start("Spinning...")
 //	defer sp.Stop()
@@ -36,7 +36,7 @@ func WithFrames(frames []string) Option {
 
 // WithLabelFunc sets a function called on every animation tick to regenerate the label.
 // The label passed to Start is still used for non-TTY output and the frame shown during startDelay.
-// f is called from the spinner's background goroutine, so it must be safe for concurrent use
+// The func is called from the spinner's background goroutine, so it must be safe for concurrent use
 // alongside any state it reads that the caller also mutates.
 func WithLabelFunc(f func() string) Option {
 	return func(s *Spinner) { s.labelFunc = f }
@@ -123,7 +123,9 @@ func Start(label string, opts ...Option) *Spinner {
 	return s
 }
 
-// Stop halts the spinner. On TTY output, the spinner line is erased.
+// Stop halts the spinner. On TTY output, the animation is erased and the label
+// is left behind on its own line. Stop blocks until the spinner has stopped
+// writing, and is safe to call more than once.
 func (s *Spinner) Stop() {
 	s.once.Do(func() {
 		close(s.done)
