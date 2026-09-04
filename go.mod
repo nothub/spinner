@@ -1,6 +1,6 @@
 module github.com/nothub/spinner
 
-go 1.27.1
+go 1.25.0
 
 require (
 	github.com/mattn/go-runewidth v0.0.29
