@@ -97,7 +97,7 @@ func Start(label string, opts ...Option) *Spinner {
 		o(s)
 	}
 
-	if !term.IsTerminal(int(os.Stderr.Fd())) {
+	if !term.IsTerminal(int(os.Stderr.Fd())) || os.Getenv("NO_COLOR") != "" {
 		fmt.Fprintln(os.Stderr, label)
 		close(s.stopped)
 		return s
