@@ -20,9 +20,14 @@ import (
 // Option configures a Spinner.
 type Option func(*Spinner)
 
-// WithStartDelay sets how long to wait before the spinner appears.
+// WithStartDelay sets how long to wait before the spinner appears. Zero shows it
+// immediately; negative values are ignored.
 func WithStartDelay(d time.Duration) Option {
-	return func(s *Spinner) { s.startDelay = d }
+	return func(s *Spinner) {
+		if d >= 0 {
+			s.startDelay = d
+		}
+	}
 }
 
 // WithDelay sets the animation frame interval.

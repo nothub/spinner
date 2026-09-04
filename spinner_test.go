@@ -19,6 +19,21 @@ func TestWithDelayIgnoresNonPositive(t *testing.T) {
 	}
 }
 
+func TestWithStartDelayIgnoresNegative(t *testing.T) {
+	s := &Spinner{startDelay: 3 * time.Second}
+
+	// Zero is a real setting here, unlike delay: it shows the spinner at once.
+	WithStartDelay(0)(s)
+	if s.startDelay != 0 {
+		t.Errorf("WithStartDelay(0) left startDelay at %v, want 0", s.startDelay)
+	}
+
+	WithStartDelay(-time.Second)(s)
+	if s.startDelay != 0 {
+		t.Errorf("WithStartDelay(-1s) set startDelay to %v, want the previous value kept", s.startDelay)
+	}
+}
+
 // Stop is usually deferred, so it must not panic on a Spinner Start did not build.
 func TestStopOnZeroValueIsNoOp(t *testing.T) {
 	done := make(chan struct{})
