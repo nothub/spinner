@@ -1,6 +1,6 @@
 module github.com/nothub/spinner
 
-go 1.26.4
+go 1.27.1
 
 require golang.org/x/term v0.45.0
 
