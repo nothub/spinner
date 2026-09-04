@@ -146,8 +146,15 @@ func Start(label string, opts ...Option) *Spinner {
 
 // Stop halts the spinner. On TTY output, the animation is erased and the label
 // is left behind on its own line. Stop blocks until the spinner has stopped
-// writing, and is safe to call more than once.
+// writing, and is safe to call more than once. Calling it on a Spinner that
+// Start did not return does nothing.
 func (s *Spinner) Stop() {
+	// A Spinner that Start did not build has nil channels; closing one panics,
+	// and Stop is usually deferred, where a panic would mask the caller's own.
+	if s.done == nil {
+		return
+	}
+
 	s.once.Do(func() {
 		close(s.done)
 	})

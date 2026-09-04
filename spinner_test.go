@@ -19,6 +19,21 @@ func TestWithDelayIgnoresNonPositive(t *testing.T) {
 	}
 }
 
+// Stop is usually deferred, so it must not panic on a Spinner Start did not build.
+func TestStopOnZeroValueIsNoOp(t *testing.T) {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		(&Spinner{}).Stop()
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Stop on a zero-value Spinner blocked")
+	}
+}
+
 func TestWithFramesIgnoresEmpty(t *testing.T) {
 	for _, frames := range [][]string{nil, {}} {
 		s := &Spinner{frames: []string{"a"}}
