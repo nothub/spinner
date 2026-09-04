@@ -24,7 +24,7 @@ func main() {
 		}))
 	defer sp.Stop()
 	for range 20 {
-		done.Add(1)
 		time.Sleep(200 * time.Millisecond)
+		done.Add(1)
 	}
 }
