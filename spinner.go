@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/mattn/go-runewidth"
 	"golang.org/x/term"
 )
 
@@ -62,6 +63,7 @@ type Spinner struct {
 }
 
 // Start prints label and animates in place on stderr when stderr is a TTY.
+// The animated line is cut to 80 columns; the non-TTY line is printed in full.
 // On non-TTY output, such as pipes or log files, it prints the label as a line.
 // Call Stop when the operation finishes.
 func Start(label string, opts ...Option) *Spinner {
@@ -94,11 +96,11 @@ func Start(label string, opts ...Option) *Spinner {
 		defer close(s.stopped)
 
 		current := label
-		fmt.Fprintf(os.Stderr, "\r\033[2K%s", current)
+		fmt.Fprintf(os.Stderr, "\r\033[2K%s", truncate(current))
 
 		select {
 		case <-s.done:
-			fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", current)
+			fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", truncate(current))
 			return
 		case <-time.After(s.startDelay):
 		}
@@ -111,7 +113,7 @@ func Start(label string, opts ...Option) *Spinner {
 			if s.labelFunc != nil {
 				current = cleanLabel(s.labelFunc())
 			}
-			fmt.Fprintf(os.Stderr, "\r\033[2K%s %s", s.frames[i%len(s.frames)], current)
+			fmt.Fprintf(os.Stderr, "\r\033[2K%s", truncate(s.frames[i%len(s.frames)]+" "+current))
 			i++
 		}
 
@@ -120,7 +122,7 @@ func Start(label string, opts ...Option) *Spinner {
 		for {
 			select {
 			case <-s.done:
-				fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", current)
+				fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", truncate(current))
 				return
 			case <-t.C:
 				printFrame()
@@ -139,6 +141,20 @@ func (s *Spinner) Stop() {
 		close(s.done)
 	})
 	<-s.stopped
+}
+
+// maxWidth caps the rendered spinner line in terminal cells. The erase sequence
+// clears only the row the cursor is on, so a line that wraps leaves residue behind.
+const maxWidth = 80
+
+// truncate cuts s to at most maxWidth cells. runewidth measures whole grapheme
+// clusters, so a cut never splits a combining sequence.
+//
+// Ambiguous-width runes follow the locale runewidth detects at init, but its
+// ambiguous table is a subset of UAX #11: U+25D5 in the default frames counts as
+// one cell either way, so a CJK terminal rendering it wide can still wrap.
+func truncate(s string) string {
+	return runewidth.Truncate(s, maxWidth, "")
 }
 
 func cleanLabel(s string) string {
