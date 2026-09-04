@@ -51,6 +51,15 @@ func WithLabelFunc(f func() string) Option {
 	return func(s *Spinner) { s.labelFunc = f }
 }
 
+// WithMaxWidth sets the cap on the rendered line, in terminal cells.
+func WithMaxWidth(n int) Option {
+	return func(s *Spinner) {
+		if n > 0 {
+			s.maxWidth = n
+		}
+	}
+}
+
 // Spinner animates a progress indicator on stderr.
 type Spinner struct {
 	done       chan struct{}

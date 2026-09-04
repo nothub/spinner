@@ -30,6 +30,22 @@ func TestWithFramesIgnoresEmpty(t *testing.T) {
 	}
 }
 
+func TestWithMaxWidth(t *testing.T) {
+	s := &Spinner{maxWidth: 80}
+
+	WithMaxWidth(20)(s)
+	if s.maxWidth != 20 {
+		t.Errorf("WithMaxWidth(20) set maxWidth to %d, want 20", s.maxWidth)
+	}
+
+	for _, n := range []int{0, -1} {
+		WithMaxWidth(n)(s)
+		if s.maxWidth != 20 {
+			t.Errorf("WithMaxWidth(%d) set maxWidth to %d, want the previous value kept", n, s.maxWidth)
+		}
+	}
+}
+
 // Guards the default wired up in Start, not just the field.
 func TestStartDefaultsToEightyColumns(t *testing.T) {
 	sp := Start("")
