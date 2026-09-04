@@ -86,8 +86,6 @@ type Spinner struct {
 }
 
 // Start prints label and animates in place on stderr when stderr is a TTY.
-// The animated line is cut to 80 columns; the non-TTY line is printed in full.
-// On non-TTY output, such as pipes or log files, it prints the label as a line.
 // Call Stop when the operation finishes.
 func Start(label string, opts ...Option) *Spinner {
 	label = cleanLabel(label)
