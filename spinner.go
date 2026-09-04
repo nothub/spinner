@@ -7,6 +7,7 @@ package spinner
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -75,6 +76,10 @@ type Spinner struct {
 	frames     []string
 	labelFunc  func() string
 	maxWidth   int
+	// w and animate are decided in Start and never change afterwards, so the
+	// goroutine reads them without synchronisation. Tests substitute both.
+	w       io.Writer
+	animate bool
 }
 
 // Start prints label and animates in place on stderr when stderr is a TTY.
@@ -90,6 +95,8 @@ func Start(label string, opts ...Option) *Spinner {
 		startDelay: 3 * time.Second,
 		delay:      250 * time.Millisecond,
 		maxWidth:   80,
+		w:          os.Stderr,
+		animate:    term.IsTerminal(int(os.Stderr.Fd())) && os.Getenv("NO_COLOR") == "",
 		frames: []string{
 			"૮(｡◕‿◕｡)っ",
 			"૮(｡◕‿◕｡)つ",
@@ -102,8 +109,8 @@ func Start(label string, opts ...Option) *Spinner {
 		o(s)
 	}
 
-	if !term.IsTerminal(int(os.Stderr.Fd())) || os.Getenv("NO_COLOR") != "" {
-		fmt.Fprintln(os.Stderr, label)
+	if !s.animate {
+		fmt.Fprintln(s.w, label)
 		close(s.stopped)
 		return s
 	}
@@ -112,11 +119,11 @@ func Start(label string, opts ...Option) *Spinner {
 		defer close(s.stopped)
 
 		current := label
-		fmt.Fprintf(os.Stderr, "\r\033[2K%s", s.truncate(current))
+		fmt.Fprintf(s.w, "\r\033[2K%s", s.truncate(current))
 
 		select {
 		case <-s.done:
-			fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", s.truncate(current))
+			fmt.Fprintf(s.w, "\r\033[2K%s\n", s.truncate(current))
 			return
 		case <-time.After(s.startDelay):
 		}
@@ -129,7 +136,7 @@ func Start(label string, opts ...Option) *Spinner {
 			if s.labelFunc != nil {
 				current = cleanLabel(s.labelFunc())
 			}
-			fmt.Fprintf(os.Stderr, "\r\033[2K%s", s.truncate(s.frames[i%len(s.frames)]+" "+current))
+			fmt.Fprintf(s.w, "\r\033[2K%s", s.truncate(s.frames[i%len(s.frames)]+" "+current))
 			i++
 		}
 
@@ -138,7 +145,7 @@ func Start(label string, opts ...Option) *Spinner {
 		for {
 			select {
 			case <-s.done:
-				fmt.Fprintf(os.Stderr, "\r\033[2K%s\n", s.truncate(current))
+				fmt.Fprintf(s.w, "\r\033[2K%s\n", s.truncate(current))
 				return
 			case <-t.C:
 				printFrame()
