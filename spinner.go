@@ -49,10 +49,13 @@ func WithFrames(frames []string) Option {
 	}
 }
 
-// WithLabelFunc sets a function called on every animation tick to regenerate the label.
+// WithLabelFunc sets a function called on every animation tick to regenerate the label,
+// and once more when Stop ends the animation, so the line left on screen shows the
+// final state rather than the last frame's.
 // The label passed to Start is still used for non-TTY output and the frame shown during startDelay.
 // The func is called from the spinner's background goroutine, so it must be safe for concurrent use
-// alongside any state it reads that the caller also mutates.
+// alongside any state it reads that the caller also mutates. Stop waits for that last
+// call to return.
 func WithLabelFunc(f func() string) Option {
 	return func(s *Spinner) { s.labelFunc = f }
 }
@@ -119,10 +122,19 @@ func Start(label string, opts ...Option) *Spinner {
 		defer close(s.stopped)
 
 		current := label
+		refreshLabel := func() {
+			if s.labelFunc != nil {
+				current = cleanLabel(s.labelFunc())
+			}
+		}
+
 		fmt.Fprintf(s.w, "\r\033[2K%s", s.truncate(current))
 
+		// Every exit refreshes first: the line left behind outlives the animation,
+		// so it has to show the final state rather than the last frame's.
 		select {
 		case <-s.done:
+			refreshLabel()
 			fmt.Fprintf(s.w, "\r\033[2K%s\n", s.truncate(current))
 			return
 		case <-time.After(s.startDelay):
@@ -133,9 +145,7 @@ func Start(label string, opts ...Option) *Spinner {
 
 		i := 0
 		printFrame := func() {
-			if s.labelFunc != nil {
-				current = cleanLabel(s.labelFunc())
-			}
+			refreshLabel()
 			fmt.Fprintf(s.w, "\r\033[2K%s", s.truncate(s.frames[i%len(s.frames)]+" "+current))
 			i++
 		}
@@ -145,6 +155,7 @@ func Start(label string, opts ...Option) *Spinner {
 		for {
 			select {
 			case <-s.done:
+				refreshLabel()
 				fmt.Fprintf(s.w, "\r\033[2K%s\n", s.truncate(current))
 				return
 			case <-t.C:
@@ -157,9 +168,9 @@ func Start(label string, opts ...Option) *Spinner {
 }
 
 // Stop halts the spinner. On TTY output, the animation is erased and the label
-// is left behind on its own line. Stop blocks until the spinner has stopped
-// writing, and is safe to call more than once. Calling it on a Spinner that
-// Start did not return does nothing.
+// is left behind on its own line, regenerated once by WithLabelFunc if one is set.
+// Stop blocks until the spinner has stopped writing, and is safe to call more than
+// once. Calling it on a Spinner that Start did not return does nothing.
 func (s *Spinner) Stop() {
 	// A Spinner that Start did not build has nil channels; closing one panics,
 	// and Stop is usually deferred, where a panic would mask the caller's own.

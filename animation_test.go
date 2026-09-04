@@ -211,6 +211,56 @@ func TestAnimationCapsRenderedWidth(t *testing.T) {
 	}
 }
 
+// The line Stop leaves behind outlives the animation, so it has to show the state
+// at Stop, not the state at the last tick. A long delay guarantees no tick lands
+// between the state change and Stop.
+func TestStopRefreshesTheLabel(t *testing.T) {
+	var (
+		buf lockedBuffer
+		n   atomic.Int64
+	)
+
+	sp := Start("initial", capture(&buf),
+		WithStartDelay(0),
+		WithDelay(time.Hour),
+		WithFrames([]string{"A"}),
+		WithLabelFunc(func() string { return fmt.Sprintf("n=%d", n.Load()) }),
+	)
+	waitFor(t, &buf, func(s string) bool { return strings.Contains(s, "n=0") }, "the first frame")
+
+	n.Store(7)
+	sp.Stop()
+
+	if got := buf.String(); !strings.HasSuffix(got, "n=7\n") {
+		t.Errorf("final line did not pick up the label change, got %q", got)
+	}
+}
+
+// Same guarantee when Stop arrives before the animation ever starts.
+func TestStopRefreshesTheLabelBeforeStartDelay(t *testing.T) {
+	var (
+		buf lockedBuffer
+		n   atomic.Int64
+	)
+
+	sp := Start("initial", capture(&buf),
+		WithStartDelay(time.Hour),
+		WithLabelFunc(func() string { return fmt.Sprintf("n=%d", n.Load()) }),
+	)
+	waitFor(t, &buf, func(s string) bool { return strings.Contains(s, "initial") }, "the start label")
+
+	n.Store(3)
+	sp.Stop()
+
+	got := buf.String()
+	if !strings.HasPrefix(got, eraseSeq+"initial") {
+		t.Errorf("the line shown during startDelay should be the Start label, got %q", got)
+	}
+	if !strings.HasSuffix(got, "n=3\n") {
+		t.Errorf("final line did not pick up the label change, got %q", got)
+	}
+}
+
 // The stopped-channel handshake has to mean the goroutine is done writing, not
 // merely that it was told to stop.
 func TestAnimationWritesNothingAfterStop(t *testing.T) {
